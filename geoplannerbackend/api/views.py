@@ -16,6 +16,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
     lookup_field = "id"  # Para que los endpoints usen UUID en lugar de pk
 
+    def create(self, request, *args, **kwargs):
+        nombre_usuario = request.data.get("nombre_usuario")
+        email = request.data.get("email")
+
+        # Validar si ya existe el usuario
+        if Usuario.objects.filter(nombre_usuario=nombre_usuario).exists():
+            return Response(
+                {"error": "El nombre de usuario ya está en uso."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar si ya existe el email
+        if Usuario.objects.filter(email=email).exists():
+            return Response(
+                {"error": "El correo electrónico ya está registrado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Si pasa las validaciones, crear el usuario normalmente
+        return super().create(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
         # Eliminar imagen de perfil de la BDD al borrar usuario
         if instance.foto_perfil and os.path.isfile(instance.foto_perfil.path):
