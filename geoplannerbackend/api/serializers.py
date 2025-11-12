@@ -1,5 +1,13 @@
 from rest_framework import serializers
-from .models import Usuario, ActividadeAgenda, Publicacion, UbicacionEvento
+from .models import (
+    Usuario,
+    ActividadeAgenda,
+    Publicacion,
+    UbicacionEvento,
+    Inscripciones,
+    LikePublicacion,
+    ComentarioPublicacion,
+)
 
 
 # Serializer para el modelo Usuario
@@ -56,6 +64,22 @@ class ActividadAgendaSerializer(serializers.ModelSerializer):
         return instance
 
 
+# Serializer para likes en publicaciones
+class LikePublicacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LikePublicacion
+        fields = "__all__"
+        read_only_fields = ("id", "fecha_like")
+
+
+# Serializer para comentarios en publicaciones
+class ComentarioPublicacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComentarioPublicacion
+        fields = "__all__"
+        read_only_fields = ("id", "fecha_comentario")
+
+
 # Serializer para el modelo Publicacion
 class PublicacionSerializer(serializers.ModelSerializer):
     # Para crear publicación con ubicaciones
@@ -64,14 +88,26 @@ class PublicacionSerializer(serializers.ModelSerializer):
     ubicaciones_list = UbicacionEventoSerializer(
         many=True, source="ubicacion", read_only=True
     )
+    likes = LikePublicacionSerializer(many=True, read_only=True)
+    comentarios_publicacion = ComentarioPublicacionSerializer(many=True, read_only=True)
+    ya_dio_like = serializers.SerializerMethodField()
 
     class Meta:
         model = Publicacion
         fields = "__all__"
+        extra_fields = ["ya_dio_like"]
         read_only_fields = (
             "id",
             "fecha_creacion",
         )
+
+    def get_ya_dio_like(self, obj):
+        usuario_id = self.context.get("usuario_id")
+        if usuario_id:
+            return LikePublicacion.objects.filter(
+                id_usuario=usuario_id, id_publicacion=obj.id
+            ).exists()
+        return False
 
     def create(self, validated_data):
         ubicaciones_data = validated_data.pop("ubicaciones", [])
@@ -93,3 +129,17 @@ class PublicacionSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+# Serializer para Login
+class LoginSerializer(serializers.Serializer):
+    nombre_usuario = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+
+
+# Serializer para inscripciones
+class InscripcionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inscripciones
+        fields = "__all__"
+        read_only_fields = ("id",)

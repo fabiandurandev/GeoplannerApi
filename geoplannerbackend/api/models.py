@@ -96,7 +96,7 @@ class Publicacion(models.Model):
     comentarios = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"Publicación de {self.id_usuario.nombre_usuario} en {self.fecha_evento}"
+        return f"Publicación de {self.id_usuario.nombre_usuario}: {self.titulo}"
 
 
 # Tabla donde se almacenan las imagenes de las publicaciones
@@ -116,3 +116,51 @@ class UbicacionEvento(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
     latitud = models.DecimalField(max_digits=9, decimal_places=6)
     longitud = models.DecimalField(max_digits=9, decimal_places=6)
+
+
+# Tabla para inscripciones a eventos
+class Inscripciones(models.Model):
+    ESTADO_ASISTENCIA = [
+        ("INS", "Inscrito"),
+        ("ASI", "Asisticio"),
+        ("NOASI", "No asistio"),
+        ("CAN", "Cancelado"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    id_publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE)
+    estado_asistencia = models.CharField(
+        choices=ESTADO_ASISTENCIA, max_length=10, default="INS"
+    )
+
+
+# Tabla para likes en publicaciones
+class LikePublicacion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id_usuario = models.ForeignKey("Usuario", on_delete=models.CASCADE)
+    id_publicacion = models.ForeignKey(
+        "Publicacion", on_delete=models.CASCADE, related_name="likes"
+    )
+    fecha_like = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("id_usuario", "id_publicacion")  # Un like por usuario
+        verbose_name = "Like"
+        verbose_name_plural = "Likes"
+
+    def __str__(self):
+        return f"{self.id_usuario.nombre_usuario} → {self.id_publicacion.titulo}"
+
+
+# Tabla para comentarios en publicaciones
+class ComentarioPublicacion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id_usuario = models.ForeignKey("Usuario", on_delete=models.CASCADE)
+    id_publicacion = models.ForeignKey(
+        "Publicacion", on_delete=models.CASCADE, related_name="comentarios_publicacion"
+    )
+    texto = models.TextField()
+    fecha_comentario = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comentario de {self.id_usuario.nombre_usuario} en {self.id_publicacion.titulo}"
