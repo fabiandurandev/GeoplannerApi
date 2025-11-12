@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Usuario, ActividadeAgenda, Publicacion, UbicacionEvento
+from .models import Usuario, ActividadeAgenda, Publicacion, UbicacionEvento, Inscripcion
 
 
 # Serializer para el modelo Usuario
@@ -93,3 +93,8 @@ class PublicacionSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+# class InscripcionSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Inscripcion
+#         fields = '__all__'  # Incluye todos los campos del modelo

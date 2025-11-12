@@ -116,3 +116,25 @@ class UbicacionEvento(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
     latitud = models.DecimalField(max_digits=9, decimal_places=6)
     longitud = models.DecimalField(max_digits=9, decimal_places=6)
+
+# class Inscripcion(models.Model):
+#     # Relacionamos la inscripción con un usuario
+#     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    
+#     # Relacionamos la inscripción con una publicación (evento)
+#     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE)
+
+#     # Fecha de inscripción
+#     fecha_inscripcion = models.DateTimeField(auto_now_add=True)
+
+#     # Estado de la inscripción (opcional, puedes usarlo para tener más control)
+#     ESTADO_OPCIONES = [
+#         ('INS', 'Inscrito'),
+#         ('CANC', 'Cancelada'),
+#         ('ASI','Asistio'),
+#         ('NOASI', 'No asistio')
+#     ]
+#     estado = models.CharField(max_length=10, choices=ESTADO_OPCIONES, default='INS')
+
+#     def __str__(self):
+#         return f"{self.usuario.nombre} se inscribió en {self.publicacion.titulo} ({self.estado})"
