@@ -9,6 +9,7 @@ from .views import (
     InscripcionViewSet,
     LikePublicacionViewSet,
     ComentarioPublicacionViewSet,
+    chatbot_view,
 )
 
 router = DefaultRouter()
@@ -23,4 +24,5 @@ router.register(r"comentarios", ComentarioPublicacionViewSet, basename="comentar
 urlpatterns = [
     path("", include(router.urls)),
     path("login/", LoginView.as_view(), name="login"),
+    path("chatbot/", chatbot_view, name="chatbot"),
 ]

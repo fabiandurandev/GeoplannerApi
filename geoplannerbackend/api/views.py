@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, mixins
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db import models
+import requests
 from .models import (
     Usuario,
     ActividadeAgenda,
@@ -10,6 +11,7 @@ from .models import (
     Inscripciones,
     LikePublicacion,
     ComentarioPublicacion,
+    Conversacion,
 )
 from .serializers import (
     UsuarioSerializer,
@@ -21,6 +23,7 @@ from .serializers import (
     LikePublicacionSerializer,
     ComentarioPublicacionSerializer,
 )
+from rest_framework.decorators import api_view
 import os
 
 
@@ -273,3 +276,90 @@ class ComentarioPublicacionViewSet(viewsets.ModelViewSet):
             comentarios=models.F("comentarios") - 1
         )
         return response
+
+
+# Vista para el chatbot
+## ENDPOINT DE LA CONVERSACION
+@api_view(["POST"])
+def chatbot_view(request):
+    """
+    Chatbot con historial persistente en base de datos
+    """
+    user_id = request.data.get("usuario_id")
+    mensaje_usuario = request.data.get("mensaje")
+
+    if not user_id or not mensaje_usuario:
+        return Response({"error": "Datos incompletos."}, status=400)
+
+    try:
+        usuario = Usuario.objects.get(id=user_id)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado."}, status=404)
+
+    # Guardar mensaje del usuario
+    Conversacion.objects.create(
+        usuario=usuario, remitente="usuario", mensaje=mensaje_usuario
+    )
+
+    # Obtener historial (últimos 10 mensajes)
+    historial = Conversacion.objects.filter(usuario=usuario).order_by("-fecha")[:10]
+    contexto = "\n".join(
+        [f"{msg.remitente.upper()}: {msg.mensaje}" for msg in reversed(historial)]
+    )
+
+    # Llamar a la API de Gemini
+    GEMINI_API_KEY = (
+        "AIzaSyDz5L6yyl3vsYXHq_HX5wZjMDLUlG8BcBw"  ## <-- CLAVE DE FRANGER... OJITO
+    )
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": (
+                            "Eres Geo IA, el asistente oficial de la aplicación móvil GeoPlanner "
+                            "la cual es una aplicacion tipo red social que ayuda a los usuarios a "
+                            "subir eventos, ver ubicaciones de eventos, hacer publicaciones de eventos, "
+                            "cambiar la privacidad de dichos eventos, inscribirse a eventos publicos o de amigos, etc..., "
+                            "desarrollada por los estudiantes de URBE: Franger Alastre, Valeria Socorro, Luis Villalobos, Fabian Duran, y pueden ser contactados por medio de "
+                            "f.alastre@urbe.edu.ve ."
+                            "NO tienes relación con ArcGIS GeoPlanner "
+                            "ni con ningún producto de Esri.\n\n"
+                            "REGLAS ESTRICTAS:\n"
+                            "1. SOLO puedes responder preguntas relacionadas con la aplicación móvil GeoPlanner.\n"
+                            "2. Tambien puedes responder a preguntas relacionadas con la hora, la fecha actual y a saludos cordiales.\n"
+                            "3. Si el usuario pregunta algo que NO sea sobre GeoPlanner, sobre la hora y fecha, o si no es un saludo, sobre quienes son los creadores o desarrolladores de GeoPlanner y como contactarlos, o sobre que es Geoplanner debes responder:\n"
+                            '"Lo siento mucho, pero solo puedo ayudarte a usar GeoPlanner. '
+                            'Te recomiendo usar otras fuentes para ese tipo de preguntas."\n'
+                            "4. Tus respuestas deben ser cortas, claras y prácticas.\n"
+                            "5. Responde siempre como un asistente amable y útil.\n"
+                            "6. Cuando el usuario pregunte sobre funcionalidades, guíalo paso a paso.\n"
+                            "7. Nunca hables de ArcGIS, Esri, o cualquier software externo.\n"
+                            "8. No inventes información de funcionalidades que no existen.\n\n"
+                            "Aquí tienes el historial para contexto:\n"
+                            f"{contexto}\n\n"
+                            "Ahora responde la última pregunta del usuario:\n"
+                            f"{mensaje_usuario}"
+                        )
+                    }
+                ]
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        data = response.json()
+        print("🔹 Respuesta de Gemini:", data)
+        respuesta_bot = data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print("❌ Error al procesar Gemini:", e)
+        respuesta_bot = "Lo siento, hubo un error al procesar tu mensaje."
+
+    # Guardar respuesta del bot
+    Conversacion.objects.create(usuario=usuario, remitente="bot", mensaje=respuesta_bot)
+
+    return Response({"respuesta": respuesta_bot})

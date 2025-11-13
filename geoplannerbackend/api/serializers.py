@@ -7,6 +7,7 @@ from .models import (
     Inscripciones,
     LikePublicacion,
     ComentarioPublicacion,
+    Conversacion,
 )
 
 
@@ -143,3 +144,11 @@ class InscripcionSerializer(serializers.ModelSerializer):
         model = Inscripciones
         fields = "__all__"
         read_only_fields = ("id",)
+
+
+# Serializer de conversacion
+## SERIALIZER DE LA CONVERSACION
+class ConversacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conversacion
+        fields = "_all_"

@@ -164,3 +164,22 @@ class ComentarioPublicacion(models.Model):
 
     def __str__(self):
         return f"Comentario de {self.id_usuario.nombre_usuario} en {self.id_publicacion.titulo}"
+
+
+# Modelo de conversacion
+class Conversacion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE, related_name="conversaciones"
+    )
+    remitente = models.CharField(
+        max_length=10, choices=[("usuario", "Usuario"), ("bot", "Bot")]
+    )
+    mensaje = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["fecha"]
+
+    def _str_(self):
+        return f"{self.remitente.capitalize()} - {self.fecha.strftime('%Y-%m-%d %H:%M:%S')}"
