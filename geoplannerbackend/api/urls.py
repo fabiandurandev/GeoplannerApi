@@ -10,6 +10,7 @@ from .views import (
     LikePublicacionViewSet,
     ComentarioPublicacionViewSet,
     chatbot_view,
+    estadisticas_admin,
 )
 
 router = DefaultRouter()
@@ -25,4 +26,5 @@ urlpatterns = [
     path("", include(router.urls)),
     path("login/", LoginView.as_view(), name="login"),
     path("chatbot/", chatbot_view, name="chatbot"),
+    path("estadisticas/", estadisticas_admin, name="estadisticas_admin"),
 ]

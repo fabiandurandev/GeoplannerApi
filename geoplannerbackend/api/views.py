@@ -24,6 +24,12 @@ from .serializers import (
     ComentarioPublicacionSerializer,
 )
 from rest_framework.decorators import api_view
+from geopy import Nominatim
+from functools import lru_cache
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from django.db.models import Count
+
 import os
 
 
@@ -363,3 +369,133 @@ def chatbot_view(request):
     Conversacion.objects.create(usuario=usuario, remitente="bot", mensaje=respuesta_bot)
 
     return Response({"respuesta": respuesta_bot})
+
+
+@lru_cache(maxsize=100)  # para evitar repetir búsquedas a las mismas coordenadas
+def obtener_direccion(lat, lon):
+    geolocator = Nominatim(user_agent="geoplanner")
+    try:
+        location = geolocator.reverse(f"{lat}, {lon}", language="es", timeout=10)
+        if location and location.address:
+            partes = location.address.split(",")
+            if len(partes) >= 3:
+                # Ejemplo: "Plaza Bolívar, Maracaibo, Venezuela"
+                return f"{partes[0].strip()}, {partes[-3].strip()}"
+            return location.address
+        else:
+            return f"{lat}, {lon}"
+    except Exception:
+        return f"{lat}, {lon}"
+
+
+@api_view(["GET"])
+def estadisticas_admin(request):
+    ## Endpoint combinado para el dashboard de administradores
+
+    # @ Eventos por categoria
+    CATEGORIA_NOMBRES = dict(Publicacion.CATEGORIA_OPCIONES)
+
+    categorias = (
+        Publicacion.objects.values("categoria")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+    categorias_dict = {
+        CATEGORIA_NOMBRES.get(c["categoria"], c["categoria"]): c["total"]
+        for c in categorias
+    }
+
+    # @ Inscripciones por categoria
+    CATEGORIA_NOMBRES = dict(Publicacion.CATEGORIA_OPCIONES)
+    inscripciones_por_categoria = (
+        Inscripciones.objects.values("id_publicacion__categoria")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+    inscripciones_categoria_dict = {
+        CATEGORIA_NOMBRES.get(
+            i["publicacion__categoria"], i["publicacion__categoria"]
+        ): i["total"]
+        for i in inscripciones_por_categoria
+    }
+
+    # Imprimir para ver los datos de inscripciones por categoria
+    print(inscripciones_categoria_dict)
+
+    # @ Eventos por estado (vigente, finalizado, cancelado)
+    estados = Publicacion.objects.values("estado").annotate(total=Count("id"))
+    estados_dict = {e["estado"]: e["total"] for e in estados}
+
+    # @ Usuarios registrados por mes
+    usuarios_por_mes = [0] * 12
+    for u in Usuario.objects.all():
+        mes = u.fecha_registro.month - 1
+        usuarios_por_mes[mes] += 1
+
+    # @ Ubicaciones mas usadas
+    ubicaciones = UbicacionEvento.objects.values("latitud", "longitud").annotate(
+        total=Count("id")
+    )
+    ubicaciones_dict = {}
+    for u in ubicaciones:
+        direccion = obtener_direccion(u["latitud"], u["longitud"])
+        ubicaciones_dict[direccion] = u["total"]
+
+    ## Crecimiento de usuarios (usuarios por mes)
+    usuarios_por_mes = [0] * 12
+    for u in Usuario.objects.all():
+        mes = u.fecha_registro.month - 1
+        usuarios_por_mes[mes] += 1
+
+    meses = np.array(range(1, 13)).reshape(-1, 1)
+    modelo_usuarios = LinearRegression()
+    modelo_usuarios.fit(meses, usuarios_por_mes)
+    prediccion_usuarios = modelo_usuarios.predict(meses).tolist()
+
+    ## Relación entre cantidad de eventos y usuarios
+    total_usuarios = Usuario.objects.count()
+    total_eventos = Publicacion.objects.count()
+    eventos_vs_usuarios = {"usuarios": total_usuarios, "eventos": total_eventos}
+
+    ## Relación entre “me gusta” y número de inscripciones
+    likes = list(Publicacion.objects.values_list("me_gusta", flat=True))
+    inscripciones = [
+        Inscripciones.objects.filter(id_publicacion=p).count()
+        for p in Publicacion.objects.all()
+    ]
+
+    if likes and inscripciones:
+        modelo_likes = LinearRegression()
+        X = np.array(likes).reshape(-1, 1)
+        y = np.array(inscripciones)
+        modelo_likes.fit(X, y)
+        predicciones_likes = modelo_likes.predict(X).tolist()
+    else:
+        predicciones_likes = []
+
+    # @ RESPUESTA JSON
+    data = {
+        "categorias": categorias_dict,
+        "estados": estados_dict,
+        "usuarios_por_mes": usuarios_por_mes,
+        "ubicaciones": ubicaciones_dict,
+        "inscripciones_por_categoria": inscripciones_categoria_dict,
+    }
+
+    data.update(
+        {
+            "regresion_usuarios": {
+                "meses": list(range(1, 13)),
+                "reales": usuarios_por_mes,
+                "prediccion": prediccion_usuarios,
+            },
+            "eventos_vs_usuarios": eventos_vs_usuarios,
+            "likes_vs_inscripciones": {
+                "likes": likes,
+                "inscripciones": inscripciones,
+                "prediccion": predicciones_likes,
+            },
+        }
+    )
+
+    return Response(data)

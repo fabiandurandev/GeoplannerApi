@@ -1,1 +1,36 @@
-../venv/
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+*.egg-info/
+*.egg
+
+# --- Entorno virtual ---
+venv/
+ENV/
+env/
+.venv/
+
+# --- Django ---
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Si usas collectstatic en producción:
+static/
+
+# --- VSCode ---
+.vscode/
+*.code-workspace
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Entornos ---
+.idea/
+*.swp
