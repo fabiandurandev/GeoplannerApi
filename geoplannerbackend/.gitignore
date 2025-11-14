@@ -36,3 +36,5 @@ Thumbs.db
 # --- Entornos ---
 .idea/
 *.swp
+
+*~lock.*
