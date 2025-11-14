@@ -16,6 +16,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = "__all__"  # Incluye todos los campos
+        read_only_fields = ("rol",)  # ← Esto evita modificar el rol desde la API
 
     # Para ocultar el password en las respuestas si quieres
     extra_kwargs = {"password_hash": {"write_only": True}}

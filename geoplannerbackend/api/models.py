@@ -16,6 +16,11 @@ class Usuario(models.Model):
         ("N", "Prefiero no decirlo"),
     ]
 
+    ROL_OPCIONES = [
+        ("USUARIO", "Usuario"),
+        ("ADMIN", "Administrador"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre_usuario = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
@@ -36,6 +41,7 @@ class Usuario(models.Model):
     tema_prefefrido = models.CharField(max_length=100, blank=True)
     verificado = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    rol = models.CharField(max_length=10, choices=ROL_OPCIONES, default="USUARIO")
 
     def __str__(self):
         return self.nombre
