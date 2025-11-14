@@ -414,7 +414,7 @@ def estadisticas_admin(request):
     )
     inscripciones_categoria_dict = {
         CATEGORIA_NOMBRES.get(
-            i["publicacion__categoria"], i["publicacion__categoria"]
+            i["id_publicacion__categoria"], i["id_publicacion__categoria"]
         ): i["total"]
         for i in inscripciones_por_categoria
     }
