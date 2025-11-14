@@ -109,6 +109,15 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         instance.ubicacion.all().delete()
         instance.delete()
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        id_usuario = self.request.query_params.get("id_usuario")
+
+        if id_usuario:
+            queryset = queryset.filter(id_usuario=id_usuario)
+
+        return queryset
+
 
 # Vista para el modelo UbicacionEvento
 class UbicacionEventoViewSet(
